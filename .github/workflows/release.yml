@@ -1,15 +1,15 @@
 # 비공개 소스 저장소(StaticDuo/hwp-assist-src)에 v로 시작하는 태그가 새로 생기면
 # Windows 설치 파일을 만들어 이 저장소의 릴리스로 올린다.
 #
-# - 30분마다 새 태그가 있는지 확인한다(예약 실행은 실행한 사람이 기록되지 않는다).
-# - Actions 탭의 "Run workflow"로 바로 실행할 수도 있다.
+# - 하루 두 번(한국 시간 09:17, 21:17) 새 태그가 있는지 확인한다(예약 실행은 실행한 사람이 기록되지 않는다).
+# - 급하면 Actions 탭의 "Run workflow"로 바로 실행한다(이때는 실행한 계정이 기록된다).
 # - 소스는 hwp-assist-src 하나만 읽을 수 있는 읽기 전용 토큰(secrets.SRC_TOKEN)으로 가져온다.
 # - 릴리스는 GITHUB_TOKEN으로 만들므로 작성자는 github-actions 봇이다.
 name: release
 
 on:
   schedule:
-    - cron: "17,47 * * * *"
+    - cron: "17 0,12 * * *" # UTC 00:17, 12:17 = 한국 09:17, 21:17
   workflow_dispatch:
     inputs:
       version:
