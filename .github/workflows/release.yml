@@ -168,6 +168,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "v$VERSION" "dist/hwp-assist-setup-$VERSION.exe" \
+          # 버전 없는 이름도 함께 올려 고정 링크(releases/latest/download/hwp-assist-setup.exe)가 늘 최신을 가리키게 한다.
+          # GitHub의 "최신"은 prerelease를 빼고 고르므로 --latest로 올린다. 시험판이라는 표시는 제목에 둔다.
+          cp "dist/hwp-assist-setup-$VERSION.exe" dist/hwp-assist-setup.exe
+          gh release create "v$VERSION" "dist/hwp-assist-setup-$VERSION.exe" dist/hwp-assist-setup.exe \
             -R "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
-            --title "hwp-assist $VERSION" --notes-file ../pub/release-notes.md --prerelease
+            --title "hwp-assist $VERSION (시험판)" --notes-file ../pub/release-notes.md --latest

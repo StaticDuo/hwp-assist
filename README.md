@@ -5,7 +5,7 @@
 
 ## 내려받기
 
-[**Releases**](https://github.com/StaticDuo/hwp-assist/releases)에서 최신 `hwp-assist-setup-….exe`를 내려받아 실행하세요.
+**[최신 설치 파일 내려받기](https://github.com/StaticDuo/hwp-assist/releases/latest/download/hwp-assist-setup.exe)** — 이 링크는 늘 최신 버전을 내려받습니다. (지난 버전은 [Releases](https://github.com/StaticDuo/hwp-assist/releases))
 관리자 권한 없이 설치됩니다. "Windows의 PC 보호" 창이 뜨면 **추가 정보 → 실행**을 누르세요(코드 서명을 하지 않은 시험판).
 
 ## 필요한 것
