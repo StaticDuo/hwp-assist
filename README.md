@@ -12,7 +12,7 @@
 
 - Windows 10/11
 - 한컴오피스 한글 (.hwp 결과 저장과 한글 자동화 점검에 필요)
-- Claude 유료 구독(Pro 이상)과 [Claude Code](https://code.claude.com/docs/en/setup). 설치·로그인은 프로그램 첫 화면에서 안내합니다.
+- Claude 유료 구독(Pro 이상)과 [Claude Code](https://code.claude.com/docs/en/setup). 프로그램 첫 화면의 **Claude Code 설치** 버튼으로 공식 설치 명령을 실행하고, 이어서 로그인합니다.
 
 ## 할 수 있는 일
 
