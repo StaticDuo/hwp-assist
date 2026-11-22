@@ -3,6 +3,9 @@
 #
 # - 하루 두 번(한국 시간 09:17, 21:17) 새 태그가 있는지 확인한다(예약 실행은 실행한 사람이 기록되지 않는다).
 # - 급하면 Actions 탭의 "Run workflow"로 바로 실행한다(이때는 실행한 계정이 기록된다).
+#   "점검만"을 켜면 이미 있는 버전도 다시 빌드·점검하고 릴리스는 올리지 않는다.
+# - 설치 파일은 올리기 전에 깨끗한 러너에서 실제로 설치 → 실행 → 제거해 본다.
+#   자체 점검 화면과 설치 로그는 실행 결과의 Artifacts(qa-버전)에서 볼 수 있다.
 # - 소스는 hwp-assist-src 하나만 읽을 수 있는 읽기 전용 토큰(secrets.SRC_TOKEN)으로 가져온다.
 # - 릴리스는 GITHUB_TOKEN으로 만들므로 작성자는 github-actions 봇이다.
 name: release
@@ -15,6 +18,10 @@ on:
       version:
         description: "버전 (예: 0.1.0). 비우면 소스 저장소의 최신 태그"
         required: false
+      dry_run:
+        description: "점검만 (릴리스는 올리지 않음)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -39,6 +46,7 @@ jobs:
           SRC_TOKEN: ${{ secrets.SRC_TOKEN }}
           GH_TOKEN: ${{ github.token }}
           INPUT_VERSION: ${{ inputs.version }}
+          DRY_RUN: ${{ inputs.dry_run }}
         run: |
           if [ -z "$SRC_TOKEN" ]; then echo "SRC_TOKEN 비밀값이 없습니다"; exit 1; fi
           if [ -n "$INPUT_VERSION" ]; then
@@ -49,7 +57,9 @@ jobs:
           fi
           if [ -z "$v" ]; then echo "태그가 아직 없습니다"; echo "build=false" >> "$GITHUB_OUTPUT"; exit 0; fi
           echo "version=$v" >> "$GITHUB_OUTPUT"
-          if gh release view "v$v" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "v$v 를 점검만 합니다"; echo "build=true" >> "$GITHUB_OUTPUT"
+          elif gh release view "v$v" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "v$v 릴리스가 이미 있습니다"; echo "build=false" >> "$GITHUB_OUTPUT"
           else
             echo "v$v 를 만듭니다"; echo "build=true" >> "$GITHUB_OUTPUT"
@@ -115,7 +125,45 @@ jobs:
           & $iscc packaging\installer.iss "/DAppVersion=$env:VERSION"
           if ($LASTEXITCODE -ne 0) { throw "설치 파일을 만들지 못했습니다" }
 
+      - name: 설치본 점검 (설치 → 실행 → 제거)
+        shell: pwsh
+        timeout-minutes: 10
+        run: |
+          $app = "$env:LOCALAPPDATA\Programs\hwp-assist"
+          $p = Start-Process "dist\hwp-assist-setup-$env:VERSION.exe" -PassThru -Wait `
+            -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/LOG=$PWD\install.log"
+          if ($p.ExitCode -ne 0) { throw "설치에 실패했습니다 (종료 코드 $($p.ExitCode))" }
+          if (-not (Test-Path "$app\hwp-assist.exe")) { throw "설치 폴더에 실행 파일이 없습니다: $app" }
+
+          # 바로가기처럼 설치 폴더에서 실행한다
+          $env:HWP_ASSIST_SMOKE = "$PWD\smoke-installed.png"
+          $p = Start-Process "$app\hwp-assist.exe" -WorkingDirectory $app -PassThru -Wait
+          if ($p.ExitCode -ne 0 -or -not (Test-Path smoke-installed.png)) { throw "설치된 프로그램이 정상적으로 뜨지 않았습니다" }
+
+          # 제거 프로그램은 임시 폴더로 자신을 복사해 돌고 바로 끝나므로, 설치 폴더가 사라질 때까지 기다린다
+          Start-Process "$app\unins000.exe" -Wait -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART"
+          $deadline = (Get-Date).AddSeconds(120)
+          while ((Test-Path $app) -and (Get-Date) -lt $deadline) { Start-Sleep -Seconds 2 }
+          if (Test-Path "$app\hwp-assist.exe") { throw "제거 후에도 실행 파일이 남아 있습니다" }
+          if (Test-Path $app) {
+            Write-Output "::warning::제거 후 남은 파일:"
+            Get-ChildItem $app -Recurse | ForEach-Object { $_.FullName }
+          }
+
+      - name: 점검 결과 보관
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-${{ env.VERSION }}
+          path: |
+            src/smoke.png
+            src/smoke-installed.png
+            src/install.log
+          if-no-files-found: warn
+          retention-days: 30
+
       - name: 릴리스 올리기
+        if: ${{ !inputs.dry_run }}
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
